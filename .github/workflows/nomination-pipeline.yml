@@ -1,0 +1,77 @@
+name: Nomination Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'nominations/*.toml'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Dagger
+        uses: dagger/dagger-for-github@v6
+        with:
+          version: "0.11.9"
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Find changed nominations
+        id: changed
+        run: |
+          files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep '^nominations/.*\.toml$' || true)
+          echo "files=$files" >> $GITHUB_OUTPUT
+
+      - name: Run Dagger pipeline
+        if: steps.changed.outputs.files != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "Evaluating $file..."
+            (cd pipeline && go run main.go ../"$file")
+          done <<< "${{ steps.changed.outputs.files }}"
+
+      - name: Comment PR with results
+        if: steps.changed.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let body = '## 🏆 Nomination Pipeline Results\n\n';
+            
+            const files = '${{ steps.changed.outputs.files }}'.split('\n');
+            for (const file of files) {
+              if (!file) continue;
+              const baseName = path.basename(file, '.toml');
+              const reportPath = path.join('nominations', `${baseName}_report.json`);
+              
+              if (fs.existsSync(reportPath)) {
+                const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                const emoji = report.verdict === 'approved' ? '✅' : '❌';
+                body += `### ${emoji} ${report.github_login}\n`;
+                body += `- **Verdict**: ${report.verdict}\n`;
+                body += `- **Vibe Score**: ${report.vibe_score}/100\n`;
+                body += `- **Commits (90d)**: ${report.stats.commits_90d}\n`;
+                body += `- **Repos (90d)**: ${report.stats.repo_count_90d}\n`;
+                body += `- **Reason**: ${report.reason}\n\n`;
+                body += `<details><summary>Score Breakdown</summary>\n\n`;
+                body += '```json\n' + JSON.stringify(report.score_breakdown, null, 2) + '\n```\n';
+                body += '</details>\n\n';
+              }
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

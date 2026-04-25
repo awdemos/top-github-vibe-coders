@@ -1,0 +1,16 @@
+# Nomination for the Top GitHub Vibe Coders Leaderboard
+# Copy this file and rename it to {github_username}.toml
+# Then open a PR to the nominations/ directory
+
+github_login = "example_user"
+evidence_url = "https://github.com/example_user"
+
+# Optional: provide specific repos that demonstrate vibe coding
+[[repos]]
+name = "cool-ai-project"
+url = "https://github.com/example_user/cool-ai-project"
+why = "500 commits in 3 days, all >400 lines each"
+
+[nominator]
+github_login = "your_username"
+reason = "This user is clearly pushing AI-generated code at impossible velocity"

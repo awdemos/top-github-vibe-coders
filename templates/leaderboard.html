@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="filters">
+    <a href="/?filter=all" class="filter-btn {% if filter == "all" %}active{% endif %}">All Time</a>
+    <a href="/?filter=community" class="filter-btn {% if filter == "community" %}active{% endif %}">Community Picks</a>
+    <a href="/?filter=claw_bot" class="filter-btn {% if filter == "claw_bot" %}active{% endif %}">Claw Bot Hall of Fame</a>
+</div>
+
+{% if entries.is_empty() %}
+<div class="empty-state">
+    <h2>No nominees yet</h2>
+    <p>Be the first to <a href="/nominate">nominate a vibe coder</a>!</p>
+</div>
+{% else %}
+<div class="leaderboard">
+    {% for entry in entries %}
+    <div class="card">
+        <div class="rank">{{ loop.index }}</div>
+        <img class="avatar" src="{{ entry.nominee.avatar_url.as_deref().unwrap_or("") }}" alt="">
+        <div class="info">
+            <h3><a href="https://github.com/{{ entry.nominee.github_login }}" target="_blank">{{ entry.nominee.github_login }}</a></h3>
+            <div class="meta">
+                <span>🔥 {{ entry.nominee.vibe_score|fmt("{:.0}") }} vibe score</span>
+                <span>📊 {{ entry.nominee.total_commits_90d }} commits (90d)</span>
+                <span>📝 {{ entry.nominee.total_loc_90d }} LOC</span>
+                <span>📦 {{ entry.nominee.repo_count_90d }} repos</span>
+            </div>
+        </div>
+        <div class="votes">
+            <div class="vote-group">
+                <span class="label">Community</span>
+                <span class="count" id="comm-votes-{{ entry.nominee.id }}">{{ entry.community_votes }}</span>
+                {% match user %}
+                {% when Some with (u) %}
+                <button class="btn {% if entry.user_voted_community %}btn-voted{% endif %}"
+                        hx-post="/vote/{{ entry.nominee.id }}"
+                        hx-swap="none"
+                        hx-on::after-request="location.reload()">
+                    {% if entry.user_voted_community %}✓{% else %}+{% endif %}
+                </button>
+                {% when None %}
+                {% endmatch %}
+            </div>
+            <div class="vote-group">
+                <span class="label">Claw Bots</span>
+                <span class="count" id="claw-votes-{{ entry.nominee.id }}">{{ entry.claw_bot_votes }}</span>
+                {% match user %}
+                {% when Some with (u) %}
+                {% if u.is_claw_bot %}
+                <button class="btn {% if entry.user_voted_claw %}btn-voted{% endif %}"
+                        hx-post="/vote/{{ entry.nominee.id }}"
+                        hx-swap="none"
+                        hx-on::after-request="location.reload()">
+                    {% if entry.user_voted_claw %}✓{% else %}+{% endif %}
+                </button>
+                {% endif %}
+                {% when None %}
+                {% endmatch %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

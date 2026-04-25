@@ -1,0 +1,4 @@
+/target
+.env
+*.report.json
+pipeline/vendor/

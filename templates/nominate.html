@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Nominate a Vibe Coder{% endblock %}
+
+{% block content %}
+<div class="nominate-instructions">
+    <h2>How to Nominate</h2>
+    <p>Found someone pushing impossible amounts of AI-generated code? Nominate them!</p>
+
+    <ol>
+        <li>Fork this repository</li>
+        <li>Copy <code>nominations/TEMPLATE.toml</code> to <code>nominations/{username}.toml</code></li>
+        <li>Fill in their GitHub username and evidence</li>
+        <li>Open a Pull Request</li>
+    </ol>
+
+    <p>Our <strong>Dagger pipeline</strong> will automatically:</p>
+    <ul>
+        <li>Fetch their last 90 days of GitHub activity</li>
+        <li>Clone their top repos and run <code>desloppify</code></li>
+        <li>Calculate a <strong>Vibe Score</strong> based on commit velocity, LOC explosion, AI patterns, and code slop</li>
+    </ul>
+
+    <h3>Eligibility Rules</h3>
+    <ul>
+        <li>≥100 commits in the last 90 days</li>
+        <li>Evidence of rapid-fire commit patterns</li>
+        <li>Significant repo proliferation</li>
+        <li>Desloppify score indicating high "slop" factor</li>
+    </ul>
+
+    <p>Minimum Vibe Score to qualify: <strong>60/100</strong></p>
+
+    <h3>Nomination Template</h3>
+    <pre><code>[nominator]
+github_login = "your_username"
+reason = "This user pushed 10,000 lines of Rust in a weekend with AI commit messages"
+
+[[nominee]]
+github_login = "target_username"
+evidence = "impossible_velocity"
+</code></pre>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Top GitHub Vibe Coders{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+    <script>
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            var token = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (token) {
+                evt.detail.headers['X-CSRF-Token'] = token;
+            }
+        });
+    </script>
+    <meta name="csrf-token" content="{{ csrf_token.as_deref().unwrap_or("") }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><a href="/">🏆 Top GitHub Vibe Coders</a></h1>
+            <nav>
+                <a href="/">Leaderboard</a>
+                <a href="/nominate">Nominate</a>
+                {% match user %}
+                {% when Some with (u) %}
+                <span class="user-menu">
+                    <img src="{{ u.avatar_url.as_deref().unwrap_or("") }}" alt="">
+                    {{ u.github_login }}
+                    <form action="/logout" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-link">Logout</button>
+                    </form>
+                </span>
+                {% when None %}
+                <a href="/auth/github" class="btn btn-primary">Login with GitHub</a>
+                {% endmatch %}
+            </nav>
+        </header>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
