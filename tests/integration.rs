@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tower::ServiceExt;
 
 use top_github_vibe_coders::{
-    auth, config, db, github, leaderboard, nominations, rate_limit, voting, AppState,
+    auth, config, db, github, health, leaderboard, nominations, rate_limit, voting, AppState,
 };
 
 async fn setup_app() -> axum::Router {
@@ -50,12 +50,23 @@ async fn setup_app() -> axum::Router {
 
     axum::Router::new()
         .route("/", get(leaderboard::leaderboard))
+        .route("/health", get(health::health_check))
         .route("/nominate", get(nominations::nominate_page).post(nominations::submit_nomination))
         .route("/vote/:nominee_id", post(voting::toggle_vote))
         .route("/auth/github", get(auth::github_login))
         .route("/auth/github/callback", get(auth::github_callback))
         .route("/logout", post(auth::logout))
         .with_state(state)
+}
+
+#[tokio::test]
+async fn test_health_ok() {
+    let app = setup_app().await;
+    let response = app
+        .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]

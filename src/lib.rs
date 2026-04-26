@@ -2,10 +2,12 @@ pub mod auth;
 pub mod config;
 pub mod db;
 pub mod github;
+pub mod health;
 pub mod leaderboard;
 pub mod models;
 pub mod nominations;
 pub mod rate_limit;
+pub mod request_id;
 pub mod voting;
 
 use axum::{
