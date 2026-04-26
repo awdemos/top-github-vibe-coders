@@ -1,45 +1,15 @@
-mod auth;
-mod config;
-mod db;
-mod github;
-mod leaderboard;
-mod models;
-mod nominations;
-mod voting;
-
-use std::sync::Arc;
 use axum::{
-    response::{Html, IntoResponse, Response},
+    middleware,
     routing::{get, post},
-    http::StatusCode,
     Router,
 };
-use askama::Template;
+use std::sync::Arc;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-pub struct HtmlTemplate<T>(pub T);
-
-impl<T: Template> IntoResponse for HtmlTemplate<T> {
-    fn into_response(self) -> Response {
-        match self.0.render() {
-            Ok(html) => Html(html).into_response(),
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template: {err}"),
-            )
-                .into_response(),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AppState {
-    pub config: config::Config,
-    pub db: libsql::Connection,
-    pub github_client: github::GitHubClient,
-    pub session_manager: auth::SessionManager,
-}
+use top_github_vibe_coders::{
+    auth, config, db, github, leaderboard, nominations, rate_limit, voting, AppState,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -70,17 +40,31 @@ async fn main() -> anyhow::Result<()> {
         db,
         github_client,
         session_manager,
+        auth_limiter: rate_limit::build_limiter(1, 5),    // ~5/min burst
+        vote_limiter: rate_limit::build_limiter(2, 30),   // ~120/min burst
+        general_limiter: rate_limit::build_limiter(4, 60), // ~240/min burst
     });
 
     let app = Router::new()
         .route("/", get(leaderboard::leaderboard))
-        .route("/nominate", get(nominations::nominate_page))
-        .route("/vote/:nominee_id", post(voting::toggle_vote))
-        .route("/auth/github", get(auth::github_login))
-        .route("/auth/github/callback", get(auth::github_callback))
+        .route("/nominate", get(nominations::nominate_page).post(nominations::submit_nomination))
         .route("/logout", post(auth::logout))
         .nest_service("/static", ServeDir::new("static"))
+        .layer(middleware::from_fn_with_state(state.clone(), rate_limit::general_limit_middleware))
         .layer(TraceLayer::new_for_http())
+        .merge(
+            Router::new()
+                .route("/auth/github", get(auth::github_login))
+                .route("/auth/github/callback", get(auth::github_callback))
+                .layer(middleware::from_fn_with_state(state.clone(), rate_limit::auth_limit_middleware))
+                .with_state(state.clone()),
+        )
+        .merge(
+            Router::new()
+                .route("/vote/:nominee_id", post(voting::toggle_vote))
+                .layer(middleware::from_fn_with_state(state.clone(), rate_limit::vote_limit_middleware))
+                .with_state(state.clone()),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;

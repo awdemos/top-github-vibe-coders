@@ -236,24 +236,14 @@ pub async fn github_callback(
     // Exchange code for access token
     let token_resp = state
         .github_client
-        .client
-        .post("https://github.com/login/oauth/access_token")
-        .header("Accept", "application/json")
-        .form(&[
-            ("client_id", state.config.github_client_id.as_str()),
-            ("client_secret", state.config.github_client_secret.as_str()),
-            ("code", &code),
-        ])
-        .send()
+        .exchange_code(
+            &state.config.github_client_id,
+            &state.config.github_client_secret,
+            &code,
+        )
         .await
         .map_err(|e| {
             tracing::error!("Token exchange failed: {}", e);
-            StatusCode::BAD_REQUEST
-        })?
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e| {
-            tracing::error!("Token parse failed: {}", e);
             StatusCode::BAD_REQUEST
         })?;
 

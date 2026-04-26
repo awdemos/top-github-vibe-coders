@@ -7,6 +7,43 @@
     <h2>How to Nominate</h2>
     <p>Found someone pushing impossible amounts of AI-generated code? Nominate them!</p>
 
+    {% if let Some(msg) = success %}
+    <div class="alert alert-success">{{ msg }}</div>
+    {% endif %}
+    {% if let Some(msg) = error %}
+    <div class="alert alert-error">{{ msg }}</div>
+    {% endif %}
+
+    {% match user %}
+    {% when Some with (u) %}
+    <h3>Quick Nominate</h3>
+    <form action="/nominate" method="post" class="nomination-form">
+        <div class="form-group">
+            <label for="github_login">GitHub Username</label>
+            <input type="text" id="github_login" name="github_login" required
+                   pattern="[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?"
+                   maxlength="39"
+                   placeholder="e.g. torvalds">
+        </div>
+        <div class="form-group">
+            <label for="evidence_url">Evidence URL (optional)</label>
+            <input type="url" id="evidence_url" name="evidence_url"
+                   placeholder="https://github.com/username/repo">
+        </div>
+        <div class="form-group">
+            <label for="reason">Why are you nominating them? (optional)</label>
+            <textarea id="reason" name="reason" rows="3"
+                      placeholder="They pushed 10,000 lines of Rust in a weekend..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Nominate</button>
+    </form>
+    {% when None %}
+    <p><a href="/auth/github" class="btn btn-primary">Login with GitHub</a> to nominate someone directly.</p>
+    {% endmatch %}
+
+    <hr>
+
+    <h3>Or Nominate via Pull Request</h3>
     <ol>
         <li>Fork this repository</li>
         <li>Copy <code>nominations/TEMPLATE.toml</code> to <code>nominations/{username}.toml</code></li>
